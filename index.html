@@ -35,6 +35,7 @@
         .input-area { border-top: 1px solid #eee; padding: 15px; display: flex; }
         #userInput { flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 20px; outline: none; padding-left: 15px; }
         #sendBtn { background: none; border: none; color: #007bff; font-weight: bold; margin-left: 10px; cursor: pointer; }
+
     </style>
 </head>
 <body>
@@ -43,7 +44,7 @@
 
 <div id="chat-window">
     <div class="chat-header">
-        <span>AI 客服助理</span>
+        <span>AI 智能醫院志工</span>
         <span style="cursor:pointer" onclick="toggleChat()">✕</span>
     </div>
     <div id="messages">
@@ -56,7 +57,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyH9JVHFk59EiFwuGh6O7OVCKb-qqgvfeHEY9GtkJdx3-VdVRSPXS45JX7FaD02U-tm/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwDNlQ2-wKFPHMrrUcCS7ql0V-QKzMGo_Vyad8sQmUmgbrndqdAlHRZAnK4H8291XI/exec"; 
     let chatHistory = [];
 
     function toggleChat() {
@@ -70,9 +71,13 @@
         const text = input.value.trim();
         if (!text) return;
 
-        // 顯示使用者訊息
+        // 1. 顯示使用者訊息
         msgDiv.innerHTML += `<div class="msg user">${text}</div>`;
         input.value = '';
+        
+        // 2. 顯示「思考中...」狀態
+        const loadingId = "loading-" + Date.now();
+        msgDiv.innerHTML += `<div class="msg ai" id="${loadingId}">正在為您查詢...</div>`;
         msgDiv.scrollTop = msgDiv.scrollHeight;
 
         try {
@@ -82,19 +87,22 @@
             });
             const data = await response.json();
 
-            // 顯示 AI 回覆
-            msgDiv.innerHTML += `<div class="msg ai">${data.reply}</div>`;
+            // 3. 移除載入中提示並顯示回覆
+            document.getElementById(loadingId).remove();
+            msgDiv.innerHTML += `<div class="msg ai">${data.reply.replace(/\n/g, '<br>')}</div>`; // 支援換行
             
-            // 更新歷史紀錄 (保持對話記憶)
+            // 4. 更新歷史紀錄
             chatHistory.push({ "role": "user", "parts": [{ "text": text }] });
             chatHistory.push({ "role": "model", "parts": [{ "text": data.reply }] });
             
+            // 保持紀錄長度（建議只保留最近 10 輪，避免超過 API 長度限制）
+            if (chatHistory.length > 20) chatHistory.shift();
+
             msgDiv.scrollTop = msgDiv.scrollHeight;
         } catch (e) {
-            msgDiv.innerHTML += `<div class="msg ai">連線出錯，請檢查網路。</div>`;
+            if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+            msgDiv.innerHTML += `<div class="msg ai">抱歉，暫時無法連線。請確認：<br>1. GAS 已部署為「所有人」<br>2. 網路連線正常。</div>`;
+            console.error(e);
         }
     }
 </script>
-
-</body>
-</html>
