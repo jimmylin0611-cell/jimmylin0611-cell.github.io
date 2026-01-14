@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能醫院志工</title>
+    <style>
+        /* 漂浮按鈕 */
+        #chat-launcher {
+            position: fixed; bottom: 20px; right: 20px;
+            width: 60px; height: 60px; background: #007bff;
+            border-radius: 50%; border: none; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            color: white; font-size: 24px; z-index: 1000;
+        }
+
+        /* 對話視窗容器 */
+        #chat-window {
+            position: fixed; bottom: 90px; right: 20px;
+            width: 350px; height: 500px; background: white;
+            border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+            display: none; flex-direction: column; overflow: hidden; z-index: 1000;
+        }
+
+        /* 標題欄 */
+        .chat-header { background: #007bff; color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; }
+        
+        /* 訊息區 */
+        #messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 18px; max-width: 80%; line-height: 1.5; font-size: 14px; }
+        .user { background: #007bff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .ai { background: #e9ecef; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+
+        /* 輸入區 */
+        .input-area { border-top: 1px solid #eee; padding: 15px; display: flex; }
+        #userInput { flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 20px; outline: none; padding-left: 15px; }
+        #sendBtn { background: none; border: none; color: #007bff; font-weight: bold; margin-left: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<button id="chat-launcher" onclick="toggleChat()">💬</button>
+
+<div id="chat-window">
+    <div class="chat-header">
+        <span>AI 客服助理</span>
+        <span style="cursor:pointer" onclick="toggleChat()">✕</span>
+    </div>
+    <div id="messages">
+        <div class="msg ai">您好！我是您的 AI 智能醫院志工，有什麼可以幫您的嗎？</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="輸入訊息..." onkeypress="if(event.keyCode==13) sendMessage()">
+        <button id="sendBtn" onclick="sendMessage()">發送</button>
+    </div>
+</div>
+
+<script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwd0vmArKcu6IzwDD2Y_drWcwPUvZZr3vE5OT-4ppM/dev"; 
+    let chatHistory = [];
+
+    function toggleChat() {
+        const win = document.getElementById('chat-window');
+        win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('userInput');
+        const msgDiv = document.getElementById('messages');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // 顯示使用者訊息
+        msgDiv.innerHTML += `<div class="msg user">${text}</div>`;
+        input.value = '';
+        msgDiv.scrollTop = msgDiv.scrollHeight;
+
+        try {
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ message: text, history: chatHistory })
+            });
+            const data = await response.json();
+
+            // 顯示 AI 回覆
+            msgDiv.innerHTML += `<div class="msg ai">${data.reply}</div>`;
+            
+            // 更新歷史紀錄 (保持對話記憶)
+            chatHistory.push({ "role": "user", "parts": [{ "text": text }] });
+            chatHistory.push({ "role": "model", "parts": [{ "text": data.reply }] });
+            
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+        } catch (e) {
+            msgDiv.innerHTML += `<div class="msg ai">連線出錯，請檢查網路。</div>`;
+        }
+    }
+</script>
+
+</body>
+</html>
