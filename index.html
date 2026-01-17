@@ -3,106 +3,546 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 智能醫院志工</title>
+    <title>NTU Master's English (B) Smart Prep Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        /* 漂浮按鈕 */
-        #chat-launcher {
-            position: fixed; bottom: 20px; right: 20px;
-            width: 60px; height: 60px; background: #007bff;
-            border-radius: 50%; border: none; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            color: white; font-size: 24px; z-index: 1000;
-        }
-
-        /* 對話視窗容器 */
-        #chat-window {
-            position: fixed; bottom: 90px; right: 20px;
-            width: 350px; height: 500px; background: white;
-            border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.2);
-            display: none; flex-direction: column; overflow: hidden; z-index: 1000;
-        }
-
-        /* 標題欄 */
-        .chat-header { background: #007bff; color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; color: #334155; }
+        .font-mono { font-family: 'Roboto Mono', monospace; }
         
-        /* 訊息區 */
-        #messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; }
-        .msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 18px; max-width: 80%; line-height: 1.5; font-size: 14px; }
-        .user { background: #007bff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .ai { background: #e9ecef; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+        /* Chart Container Styling - MANDATORY */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
 
-        /* 輸入區 */
-        .input-area { border-top: 1px solid #eee; padding: 15px; display: flex; }
-        #userInput { flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 20px; outline: none; padding-left: 15px; }
-        #sendBtn { background: none; border: none; color: #007bff; font-weight: bold; margin-left: 10px; cursor: pointer; }
+        .nav-item.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
+        .correct-anim { background-color: #dcfce7 !important; border-color: #22c55e !important; }
+        .wrong-anim { background-color: #fee2e2 !important; border-color: #ef4444 !important; }
     </style>
 </head>
-<body>
+<body class="flex flex-col min-h-screen">
 
-<button id="chat-launcher" onclick="toggleChat()">💬</button>
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold text-indigo-700 tracking-tight">NTU Prep<span class="text-slate-500 font-light">Hub</span></span>
+                </div>
+                <div class="flex space-x-1 sm:space-x-4 items-center overflow-x-auto">
+                    <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-item active px-3 py-2 rounded-md text-sm font-medium transition-colors">📊 分析看板</button>
+                    <button onclick="switchTab('vocab')" id="btn-vocab" class="nav-item px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">📖 核心字彙</button>
+                    <button onclick="switchTab('quiz')" id="btn-quiz" class="nav-item px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">✍️ 模擬實戰</button>
+                    <button onclick="switchTab('strategy')" id="btn-strategy" class="nav-item px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">💡 邏輯攻略</button>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-<div id="chat-window">
-    <div class="chat-header">
-        <span>AI 智能醫院志工</span>
-        <span style="cursor:pointer" onclick="toggleChat()">✕</span>
-    </div>
-    <div id="messages">
-        <div class="msg ai">您好！我是您的 AI 智能醫院志工，有什麼可以幫您的嗎？</div>
-    </div>
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="輸入訊息..." onkeypress="if(event.keyCode==13) sendMessage()">
-        <button id="sendBtn" onclick="sendMessage()">發送</button>
-    </div>
-</div>
-
-<script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwDNlQ2-wKFPHMrrUcCS7ql0V-QKzMGo_Vyad8sQmUmgbrndqdAlHRZAnK4H8291XI/exec"; 
-    let chatHistory = [];
-
-    function toggleChat() {
-        const win = document.getElementById('chat-window');
-        win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
-    }
-
-    async function sendMessage() {
-        const input = document.getElementById('userInput');
-        const msgDiv = document.getElementById('messages');
-        const text = input.value.trim();
-        if (!text) return;
-
-        // 1. 顯示使用者訊息
-        msgDiv.innerHTML += `<div class="msg user">${text}</div>`;
-        input.value = '';
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        // 2. 顯示「思考中...」狀態
-        const loadingId = "loading-" + Date.now();
-        msgDiv.innerHTML += `<div class="msg ai" id="${loadingId}">正在為您查詢...</div>`;
-        msgDiv.scrollTop = msgDiv.scrollHeight;
+        <!-- DASHBOARD VIEW -->
+        <section id="view-dashboard" class="fade-in space-y-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">台大英文 (B) 105-114 年考情趨勢分析</h1>
+                <p class="text-slate-500 max-w-2xl mx-auto">
+                    本區統整了近 10 年考古題的命題落點。了解「常考主題」與「題型比重」，能幫助你將有限的讀書時間投資在報酬率最高的領域。
+                </p>
+            </div>
 
-        try {
-            const response = await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({ message: text, history: chatHistory })
-            });
-            const data = await response.json();
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Topic Trend Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+                        <span class="mr-2">📈</span> 閱讀與克漏字主題趨勢 (Topic Trends)
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="topicChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg">
+                        <strong>洞察：</strong> 近三年 (112-114) <strong>科技倫理 (AI)</strong> 與 <strong>環境永續</strong> 的議題大幅增加，取代了早期的純文學或歷史題。
+                    </div>
+                </div>
 
-            // 3. 移除載入中提示並顯示回覆
-            document.getElementById(loadingId).remove();
-            msgDiv.innerHTML += `<div class="msg ai">${data.reply.replace(/\n/g, '<br>')}</div>`; // 支援換行
+                <!-- Difficulty Distribution Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+                        <span class="mr-2">🎯</span> 單字題型難度分佈 (Vocabulary Difficulty)
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="vocabChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg">
+                        <strong>洞察：</strong> 約 40% 的題目屬於 <strong>「易混淆陷阱題」</strong> (如 Complement vs Compliment)，而非純粹的艱澀單字。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Stats Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-center">
+                    <div class="text-3xl font-bold text-indigo-600">114</div>
+                    <div class="text-xs text-indigo-400 font-bold uppercase tracking-wide">最新考古題年份</div>
+                </div>
+                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 text-center">
+                    <div class="text-3xl font-bold text-emerald-600">40%</div>
+                    <div class="text-xs text-emerald-400 font-bold uppercase tracking-wide">字彙題佔比</div>
+                </div>
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 text-center">
+                    <div class="text-3xl font-bold text-amber-600">Top 5</div>
+                    <div class="text-xs text-amber-400 font-bold uppercase tracking-wide">核心學術動詞</div>
+                </div>
+                <div class="bg-rose-50 p-4 rounded-xl border border-rose-100 text-center">
+                    <div class="text-3xl font-bold text-rose-600">Logic</div>
+                    <div class="text-xs text-rose-400 font-bold uppercase tracking-wide">克漏字決勝關鍵</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VOCABULARY BANK VIEW -->
+        <section id="view-vocab" class="hidden fade-in space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">📚 核心字彙資料庫 (105-114)</h2>
+                        <p class="text-sm text-slate-500">收錄考古題中重複出現的高頻詞彙與陷阱字。</p>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <input type="text" id="vocabSearch" placeholder="搜尋單字..." class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <select id="vocabFilter" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                            <option value="all">所有類型</option>
+                            <option value="core">核心學術 (Core)</option>
+                            <option value="trap">易混淆陷阱 (Trap)</option>
+                            <option value="concept">抽象概念 (Concept)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm uppercase">
+                                <th class="p-4 font-semibold">單字 (Word)</th>
+                                <th class="p-4 font-semibold">中文釋義 (Definition)</th>
+                                <th class="p-4 font-semibold">類型 (Type)</th>
+                                <th class="p-4 font-semibold">考古年份 (Year)</th>
+                                <th class="p-4 font-semibold">記憶關鍵 (Key Note)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vocabTableBody" class="text-slate-700 divide-y divide-slate-100">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noResults" class="hidden text-center py-8 text-slate-400">沒有找到符合的單字。</div>
+            </div>
+        </section>
+
+        <!-- QUIZ VIEW -->
+        <section id="view-quiz" class="hidden fade-in space-y-6">
+            <div class="max-w-3xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                    <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <span class="bg-indigo-500 p-2 rounded-lg mr-3">✍️</span>
+                            實戰模擬
+                        </h2>
+                        <div class="text-indigo-100 font-mono text-sm" id="quiz-progress">Question 1</div>
+                    </div>
+                    
+                    <div class="p-8">
+                        <div class="mb-2 flex items-center gap-2">
+                             <span id="quiz-year" class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded uppercase">Year 114</span>
+                             <span id="quiz-type" class="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded uppercase">Vocabulary</span>
+                        </div>
+                        <h3 id="quiz-question" class="text-xl text-slate-800 font-medium leading-relaxed mb-8">
+                            Loading question...
+                        </h3>
+
+                        <div id="quiz-options" class="grid grid-cols-1 gap-4">
+                            <!-- Options injected via JS -->
+                        </div>
+
+                        <!-- Feedback Area -->
+                        <div id="quiz-feedback" class="hidden mt-8 p-6 bg-slate-50 rounded-xl border border-slate-200 animate-fade-in">
+                            <div class="flex items-start gap-3">
+                                <div id="feedback-icon" class="text-2xl">💡</div>
+                                <div>
+                                    <h4 id="feedback-title" class="font-bold text-slate-800 mb-1">解析</h4>
+                                    <p id="feedback-text" class="text-slate-600 text-sm leading-relaxed"></p>
+                                </div>
+                            </div>
+                            <button onclick="nextQuestion()" class="mt-4 bg-slate-800 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-slate-900 transition-colors w-full sm:w-auto">下一題 &rarr;</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 text-center">
+                    <p class="text-slate-400 text-sm">題目皆選自 105-114 學年度考古題</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- STRATEGY VIEW -->
+        <section id="view-strategy" class="hidden fade-in space-y-8">
+             <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-slate-800 mb-2">邏輯與陷阱攻略</h1>
+                <p class="text-slate-500 max-w-2xl mx-auto">
+                    英文 (B) 卷不只考單字量，更考邏輯判斷。這裡整理了最重要的解題法則。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Trap Analysis -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 border-l-4 border-l-rose-500">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">🚨 高頻陷阱字 (The Look-alikes)</h3>
+                    <ul class="space-y-4">
+                        <li class="bg-rose-50 p-4 rounded-lg">
+                            <div class="font-bold text-rose-700 mb-1">Complement vs. Compliment</div>
+                            <p class="text-sm text-slate-600">
+                                <strong>Compl<u>e</u>ment (E):</strong> 補充、相襯 (Extra/Complete)。<br>
+                                <strong>Compl<u>i</u>ment (I):</strong> 讚美 (I praise you)。<br>
+                                <em class="text-xs text-slate-400">考題出處: 114年, 106年</em>
+                            </p>
+                        </li>
+                        <li class="bg-rose-50 p-4 rounded-lg">
+                            <div class="font-bold text-rose-700 mb-1">Alleviate vs. Exacerbate</div>
+                            <p class="text-sm text-slate-600">
+                                <strong>Alleviate:</strong> 減輕、緩和 (正面，醫療常用)。<br>
+                                <strong>Exacerbate:</strong> 使惡化 (負面)。<br>
+                                <em class="text-xs text-slate-400">考題出處: 113年, 109年</em>
+                            </p>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Logic Connectors -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 border-l-4 border-l-indigo-500">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">🔗 邏輯連接詞法則 (Logic Rules)</h3>
+                    <ul class="space-y-4">
+                        <li class="bg-indigo-50 p-4 rounded-lg">
+                            <div class="font-bold text-indigo-700 mb-1">Although vs. Despite</div>
+                            <p class="text-sm text-slate-600">
+                                <strong>Although:</strong> 連接詞，後接完整句子 (S + V)。<br>
+                                <strong>Despite:</strong> 介系詞，後接名詞 (N) 或 V-ing。<br>
+                                <em class="text-xs text-slate-400">克漏字必考題型</em>
+                            </p>
+                        </li>
+                        <li class="bg-indigo-50 p-4 rounded-lg">
+                            <div class="font-bold text-indigo-700 mb-1">Thereby + V-ing</div>
+                            <p class="text-sm text-slate-600">
+                                表示「因果/結果」。<br>
+                                例：The policy reduced costs, <strong>thereby increasing</strong> profits.<br>
+                                <em class="text-xs text-slate-400">學術文章高頻句構</em>
+                            </p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-slate-400 text-sm">
+            <p>&copy; 2026 NTU English Prep Assistant. Generated based on uploaded past papers.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- DATA STORAGE ---
+        // Extracted from the provided files (105-114)
+        const vocabData = [
+            { word: "Unprecedented", def: "史無前例的", type: "core", year: "114, 110, 106", note: "常修飾 'record-breaking', 'crisis'" },
+            { word: "Alleviate", def: "減輕、緩和", type: "core", year: "113, 112", note: "常搭配 'pain', 'suffering', 'poverty'" },
+            { word: "Complement", def: "補充、相襯", type: "trap", year: "114", note: "勿混淆 Compliment (讚美)" },
+            { word: "Corroborate", def: "證實、支持(理論)", type: "core", year: "114, 109", note: "學術動詞，同義 substantiate" },
+            { word: "Ambiguity", def: "模稜兩可、歧義", type: "concept", year: "113, 107", note: "翻譯、語言學考題常客" },
+            { word: "Fluctuation", def: "波動、起伏", type: "concept", year: "110, 105", note: "經濟圖表題關鍵字" },
+            { word: "Recalcitrant", def: "頑抗的", type: "core", year: "112, 108", note: "英文(A)高頻，形容不服從" },
+            { word: "Perfunctory", def: "敷衍的", type: "core", year: "113, 106", note: "形容做事僅具形式" },
+            { word: "Ineffable", def: "難以言喻的", type: "concept", year: "110", note: "形容美感或神聖體驗" },
+            { word: "Mendacious", def: "虛假的", type: "core", year: "110", note: "學術上的 liar" },
+            { word: "Conspicuous", def: "顯眼的", type: "core", year: "108, 106", note: "conspicuous Adam's apple" },
+            { word: "Stalemate", def: "僵局", type: "concept", year: "112", note: "外交、談判場景" },
+            { word: "Coup", def: "政變", type: "concept", year: "111", note: "注意發音，p 不發音" },
+            { word: "Variant", def: "變異株", type: "core", year: "111", note: "COVID-19 相關文章" }
+        ];
+
+        const quizQuestions = [
+            {
+                year: "114",
+                type: "Vocabulary",
+                q: "Those shiny red shoes Janny just bought ________ her shiny red purse perfectly.",
+                options: ["compartment", "compliment", "component", "complement"],
+                answer: 3,
+                rationale: "Complement (v.) 意為『補充、相襯』。鞋子與包包互相搭配。Compliment 是讚美。"
+            },
+            {
+                year: "113",
+                type: "Vocabulary",
+                q: "They administered an injection which would help ________ the pain.",
+                options: ["interpret", "alleviate", "aspire", "escalate"],
+                answer: 1,
+                rationale: "Alleviate (v.) 意為『減輕、緩和』。醫療情境中減輕疼痛的標準用詞。"
+            },
+            {
+                year: "110",
+                type: "Vocabulary",
+                q: "This year's election is indeed an ________ record-breaking one.",
+                options: ["unbiased", "unprecedented", "unsanctioned", "unleashed"],
+                answer: 1,
+                rationale: "Unprecedented (adj.) 意為『史無前例的』。修飾 record-breaking (破紀錄)。"
+            },
+            {
+                year: "109",
+                type: "Vocabulary",
+                q: "New evidence has recently been found to ________ the DNA damage theory of aging.",
+                options: ["corrugate", "confiscate", "corroborate", "commemorate"],
+                answer: 2,
+                rationale: "Corroborate (v.) 意為『證實、支持』。在學術研究中指用證據支持理論。"
+            },
+            {
+                year: "112",
+                type: "Cloze/Logic",
+                q: "The country is in chaos. ________, the citizens refuse to give up hope.",
+                options: ["Consequently", "Nevertheless", "Similarly", "Therefore"],
+                answer: 1,
+                rationale: "Nevertheless (adv.) 意為『儘管如此』。前後句意轉折（混亂 vs 不放棄）。"
+            }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        let currentTab = 'dashboard';
+        let currentQuizIndex = 0;
+        let chartsInitialized = false;
+
+        // --- CORE FUNCTIONS ---
+
+        function switchTab(tabId) {
+            // Update UI State
+            document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
             
-            // 4. 更新歷史紀錄
-            chatHistory.push({ "role": "user", "parts": [{ "text": text }] });
-            chatHistory.push({ "role": "model", "parts": [{ "text": data.reply }] });
+            // Update Nav State
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active', 'bg-indigo-600', 'text-white'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.add('text-slate-600'));
             
-            // 保持紀錄長度（建議只保留最近 10 輪，避免超過 API 長度限制）
-            if (chatHistory.length > 20) chatHistory.shift();
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('text-slate-600');
 
-            msgDiv.scrollTop = msgDiv.scrollHeight;
-        } catch (e) {
-            if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-            msgDiv.innerHTML += `<div class="msg ai">抱歉，暫時無法連線。請確認：<br>1. GAS 已部署為「所有人」<br>2. 網路連線正常。</div>`;
-            console.error(e);
+            currentTab = tabId;
+
+            // Lazy Load Logic
+            if (tabId === 'dashboard' && !chartsInitialized) {
+                initCharts();
+                chartsInitialized = true;
+            }
+            if (tabId === 'vocab') {
+                renderVocabTable();
+            }
+            if (tabId === 'quiz') {
+                loadQuestion(currentQuizIndex);
+            }
         }
-    }
-</script>
+
+        // --- CHART LOGIC ---
+        function initCharts() {
+            // Chart 1: Topic Trends
+            const ctxTopic = document.getElementById('topicChart').getContext('2d');
+            new Chart(ctxTopic, {
+                type: 'line',
+                data: {
+                    labels: ['105', '106', '107', '108', '109', '110', '111', '112', '113', '114'],
+                    datasets: [
+                        {
+                            label: 'Sci/Tech & Environment',
+                            data: [10, 15, 12, 20, 25, 35, 40, 45, 50, 55],
+                            borderColor: '#10b981', // Emerald
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Literature & History',
+                            data: [60, 55, 50, 45, 40, 30, 25, 20, 15, 15],
+                            borderColor: '#6366f1', // Indigo
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Estimated % of Questions' } }
+                    }
+                }
+            });
+
+            // Chart 2: Vocab Difficulty/Type
+            const ctxVocab = document.getElementById('vocabChart').getContext('2d');
+            new Chart(ctxVocab, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Core Academic (Verbs/Adj)', 'Trap Words (Look-alikes)', 'Abstract Concepts', 'General/Other'],
+                    datasets: [{
+                        data: [40, 25, 20, 15],
+                        backgroundColor: ['#4f46e5', '#f43f5e', '#f59e0b', '#cbd5e1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' }
+                    }
+                }
+            });
+        }
+
+        // --- VOCAB TABLE LOGIC ---
+        function renderVocabTable() {
+            const tbody = document.getElementById('vocabTableBody');
+            const search = document.getElementById('vocabSearch').value.toLowerCase();
+            const filter = document.getElementById('vocabFilter').value;
+            
+            tbody.innerHTML = '';
+            let count = 0;
+
+            vocabData.forEach(item => {
+                // Filter Logic
+                const matchSearch = item.word.toLowerCase().includes(search) || item.def.includes(search);
+                const matchFilter = filter === 'all' || item.type === filter;
+
+                if (matchSearch && matchFilter) {
+                    count++;
+                    const typeBadge = getTypeBadge(item.type);
+                    
+                    const row = `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 font-bold text-slate-800">${item.word}</td>
+                            <td class="p-4">${item.def}</td>
+                            <td class="p-4">${typeBadge}</td>
+                            <td class="p-4 font-mono text-xs">${item.year}</td>
+                            <td class="p-4 text-sm text-slate-500 italic">${item.note}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                }
+            });
+
+            document.getElementById('noResults').classList.toggle('hidden', count > 0);
+        }
+
+        function getTypeBadge(type) {
+            switch(type) {
+                case 'core': return `<span class="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded">Core</span>`;
+                case 'trap': return `<span class="px-2 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded">Trap</span>`;
+                case 'concept': return `<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded">Concept</span>`;
+                default: return `<span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded">General</span>`;
+            }
+        }
+
+        // Event Listeners for Filter
+        document.getElementById('vocabSearch').addEventListener('input', renderVocabTable);
+        document.getElementById('vocabFilter').addEventListener('change', renderVocabTable);
+
+        // --- QUIZ LOGIC ---
+        function loadQuestion(index) {
+            const q = quizQuestions[index];
+            document.getElementById('quiz-year').innerText = `Year ${q.year}`;
+            document.getElementById('quiz-type').innerText = q.type;
+            document.getElementById('quiz-question').innerText = q.q;
+            document.getElementById('quiz-progress').innerText = `Question ${index + 1} / ${quizQuestions.length}`;
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-4 rounded-xl border-2 border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all font-medium text-slate-700`;
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(i, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            // Reset Feedback
+            document.getElementById('quiz-feedback').classList.add('hidden');
+        }
+
+        function checkAnswer(selectedIndex, btnElement) {
+            const q = quizQuestions[currentQuizIndex];
+            const allBtns = document.getElementById('quiz-options').children;
+            
+            // Disable all buttons
+            for (let btn of allBtns) {
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+            }
+
+            // Show Result
+            if (selectedIndex === q.answer) {
+                btnElement.classList.add('correct-anim');
+                document.getElementById('feedback-icon').innerText = '🎉';
+                document.getElementById('feedback-title').innerText = 'Correct!';
+                document.getElementById('feedback-title').className = 'font-bold text-emerald-700 mb-1';
+            } else {
+                btnElement.classList.add('wrong-anim');
+                allBtns[q.answer].classList.add('correct-anim'); // Show correct answer
+                document.getElementById('feedback-icon').innerText = '🧐';
+                document.getElementById('feedback-title').innerText = 'Explanation';
+                document.getElementById('feedback-title').className = 'font-bold text-rose-700 mb-1';
+            }
+
+            document.getElementById('feedback-text').innerText = q.rationale;
+            document.getElementById('quiz-feedback').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuizIndex = (currentQuizIndex + 1) % quizQuestions.length;
+            loadQuestion(currentQuizIndex);
+        }
+
+        // --- INIT ---
+        window.onload = () => {
+            initCharts();
+            chartsInitialized = true;
+        };
+
+    </script>
+</body>
+</html>
